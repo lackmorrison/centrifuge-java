@@ -588,7 +588,7 @@ public class Centrifugo {
          */
         @Override
         public void onMessage(final String message) {
-            System.out.println("centrifugo onMessage " + message);
+            Log.info("centrifugo onMessage " + message);
             try {
                 Object object = new JSONTokener(message).nextValue();
                 if (object instanceof JSONObject) {
