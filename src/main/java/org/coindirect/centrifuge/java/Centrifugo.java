@@ -1,5 +1,6 @@
 package org.coindirect.centrifuge.java;
 
+import org.apache.http.ssl.SSLContexts;
 import org.coindirect.centrifuge.java.async.Future;
 import org.coindirect.centrifuge.java.config.ReconnectConfig;
 import org.coindirect.centrifuge.java.credentials.Token;
@@ -30,8 +31,13 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
 import java.net.URI;
 import java.nio.channels.NotYetConnectedException;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -109,6 +115,24 @@ public class Centrifugo {
             this.state = STATE_CONNECTING;
             final URI uri = URI.create(wsURI);
             client = new Client(uri, new Draft_6455());
+            if (uri.getScheme().equals("wss")) {
+                SSLContext sslContext = null;
+                try {
+                    sslContext = SSLContexts.custom()
+                        .loadTrustMaterial(null, (chain, authType) -> true)
+                        .build();
+                } catch (NoSuchAlgorithmException e) {
+                    Log.debug("Failed to start connection: " + e.getMessage());
+                    if (connectionListener != null) {
+                        connectionListener.onDisconnected(-1, e.getMessage(), true);
+                    }
+                    return;
+                } catch (KeyStoreException | KeyManagementException e) {
+                    e.printStackTrace();
+                }
+                SSLSocketFactory factory = sslContext.getSocketFactory();
+                client.setSocketFactory(factory);
+            }
             client.start();
         }
     }
