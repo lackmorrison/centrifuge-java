@@ -15,6 +15,7 @@ import org.coindirect.centrifuge.java.message.presence.PresenceMessage;
 import org.coindirect.centrifuge.java.subscription.ActiveSubscription;
 import org.coindirect.centrifuge.java.subscription.SubscriptionRequest;
 import org.coindirect.centrifuge.java.subscription.UnsubscribeRequest;
+import org.java_websocket.WebSocket;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.drafts.Draft_6455;
@@ -30,8 +31,14 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import java.io.IOException;
+import java.net.Proxy;
+import java.net.Socket;
 import java.net.URI;
 import java.nio.channels.NotYetConnectedException;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -109,8 +116,49 @@ public class Centrifugo {
             this.state = STATE_CONNECTING;
             final URI uri = URI.create(wsURI);
             client = new Client(uri, new Draft_6455());
+            if (uri.getScheme().equals("wss")) {
+                SSLContext sslContext = null;
+                try {
+                    sslContext = SSLContext.getDefault();
+                } catch (NoSuchAlgorithmException e) {
+                    Log.debug("Failed to start connection: " + e.getMessage());
+                    if (connectionListener != null) {
+                        connectionListener.onDisconnected(-1, e.getMessage(), true);
+                    }
+                    return;
+                }
+                Socket socket = new Socket(Proxy.NO_PROXY);
+                SSLSocketFactory factory = sslContext.getSocketFactory();
+                try {
+                    factory.createSocket(socket, uri.getHost(), getPort(uri), true);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                client.setSocket(socket);
+            }
+            
             client.start();
         }
+    }
+
+    /**
+     * Extract the specified port
+     *
+     * @return the specified port or the default port for the specific scheme
+     */
+    private int getPort(URI uri) {
+        int port = uri.getPort();
+        if (port == -1) {
+            String scheme = uri.getScheme();
+            if ("wss".equals(scheme)) {
+                return WebSocket.DEFAULT_WSS_PORT;
+            } else if ("ws".equals(scheme)) {
+                return WebSocket.DEFAULT_PORT;
+            } else {
+                throw new IllegalArgumentException("unknown scheme: " + scheme);
+            }
+        }
+        return port;
     }
 
     public void disconnect() {
