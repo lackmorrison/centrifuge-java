@@ -1,19 +1,10 @@
 package org.coindirect.centrifuge.java;
 
-import javax.annotation.Nonnegative;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import javax.net.ssl.SSLContext;
-
 import org.coindirect.centrifuge.java.async.Future;
 import org.coindirect.centrifuge.java.config.ReconnectConfig;
 import org.coindirect.centrifuge.java.credentials.Token;
 import org.coindirect.centrifuge.java.credentials.User;
-import org.coindirect.centrifuge.java.listener.ConnectionListener;
-import org.coindirect.centrifuge.java.listener.DataMessageListener;
-import org.coindirect.centrifuge.java.listener.DownstreamMessageListener;
-import org.coindirect.centrifuge.java.listener.JoinLeaveListener;
-import org.coindirect.centrifuge.java.listener.SubscriptionListener;
+import org.coindirect.centrifuge.java.listener.*;
 import org.coindirect.centrifuge.java.message.DataMessage;
 import org.coindirect.centrifuge.java.message.DownstreamMessage;
 import org.coindirect.centrifuge.java.message.SubscribeMessage;
@@ -23,12 +14,10 @@ import org.coindirect.centrifuge.java.message.presence.LeftMessage;
 import org.coindirect.centrifuge.java.message.presence.PresenceMessage;
 import org.coindirect.centrifuge.java.subscription.ActiveSubscription;
 import org.coindirect.centrifuge.java.subscription.SubscriptionRequest;
-
 import org.coindirect.centrifuge.java.subscription.UnsubscribeRequest;
-import org.java_websocket.client.DefaultSSLWebSocketClientFactory;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft;
-import org.java_websocket.drafts.Draft_17;
+import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.handshake.Handshakedata;
 import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONArray;
@@ -38,16 +27,12 @@ import org.json.JSONTokener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.net.URI;
 import java.nio.channels.NotYetConnectedException;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -123,20 +108,7 @@ public class Centrifugo {
         if (client == null || (state != STATE_CONNECTED && state != STATE_CONNECTING)) {
             this.state = STATE_CONNECTING;
             final URI uri = URI.create(wsURI);
-            client = new Client(uri, new Draft_17());
-            if (uri.getScheme().equals("wss")) {
-                SSLContext sslContext = null;
-                try {
-                    sslContext = SSLContext.getDefault();
-                } catch (NoSuchAlgorithmException e) {
-                    Log.debug("Failed to start connection: " + e.getMessage());
-                    if (connectionListener != null) {
-                        connectionListener.onDisconnected(-1, e.getMessage(), true);
-                    }
-                    return;
-                }
-                client.setWebSocketFactory(new DefaultSSLWebSocketClientFactory(sslContext));
-            }
+            client = new Client(uri, new Draft_6455());
             client.start();
         }
     }
